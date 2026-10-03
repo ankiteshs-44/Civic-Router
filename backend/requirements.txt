@@ -1,0 +1,8 @@
+# Backend + AI dependencies for the Civic Complaint Router.
+fastapi
+uvicorn[standard]
+openai
+pydantic>=2
+python-dotenv
+pillow
+httpx

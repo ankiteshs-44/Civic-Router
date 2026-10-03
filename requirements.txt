@@ -1,0 +1,6 @@
+# AI + data module dependencies (see README.md for the venv setup).
+openai
+pydantic>=2
+python-dotenv
+pytest
+pillow

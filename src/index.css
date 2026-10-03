@@ -1,0 +1,5 @@
+/* Tailwind CSS entry point. The three directives below inject base styles,
+   component classes and utility classes respectively. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

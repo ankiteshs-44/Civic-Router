@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Local environment variables (keep .env.example committed instead)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Editor / OS noise
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.log
+npm-debug.log*
+
+# Python (AI module)
+.venv/
+**/.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
