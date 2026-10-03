@@ -1,0 +1,14 @@
+{
+  "consoleMessages": [],
+  "pageErrors": [],
+  "featureResults": {
+    "hindiSwitch": "Success",
+    "marathiSwitch": "Success",
+    "presetClick": "Success",
+    "complaintRouting": "Success",
+    "copyLetter": "Success",
+    "icsDownload": "Triggered successfully",
+    "myComplaintsTracker": "Success",
+    "offlineBanner": "Success"
+  }
+}
