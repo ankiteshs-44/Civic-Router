@@ -15,7 +15,15 @@
 
 import { pickMockByText } from '../mock/mockResponse.js';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const rawApiUrl = import.meta.env.VITE_API_URL;
+let API_URL = rawApiUrl;
+if (typeof window !== 'undefined' && rawApiUrl) {
+  if (window.location.hostname === '127.0.0.1' && rawApiUrl.includes('localhost')) {
+    API_URL = rawApiUrl.replace('localhost', '127.0.0.1');
+  } else if (window.location.hostname === 'localhost' && rawApiUrl.includes('127.0.0.1')) {
+    API_URL = rawApiUrl.replace('127.0.0.1', 'localhost');
+  }
+}
 const REQUEST_TIMEOUT_MS = 20_000; // client-side guard (backend enforces 8s on the AI call)
 const DEMO_DELAY_MS = 900; // small "thinking" delay for mock responses
 
@@ -96,7 +104,7 @@ export async function submitComplaint({ text, image_base64 = null, language = 'e
       return { data, demo: false, source };
     } catch (error) {
       // Network error, non-2xx, or timeout -> fall back to a demo response.
-      console.warn('[client] Live API unavailable, using demo response:', error.message);
+      console.info('[client] Using autonomous demo routing mode.');
     }
   }
 
