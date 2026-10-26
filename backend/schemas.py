@@ -8,12 +8,13 @@ frontend.
 
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 #: Handling priority (matches the shared contract).
 Urgency = Literal["low", "medium", "high"]
+LocationSource = Literal["text", "user_input", "gps", "combined", "unknown"]
 Category = Literal[
     "Solid Waste",
     "Water",
@@ -23,6 +24,7 @@ Category = Literal[
     "Encroachment",
     "Health",
     "Traffic",
+    "Crime / Safety",
 ]
 
 
@@ -55,11 +57,22 @@ class ComplaintResponse(BaseModel):
 
     category: Category
     location: str
+    location_source: LocationSource = Field(default="unknown", description="Where the location came from.")
+    location_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence in the detected location.")
     urgency: Urgency
     authority: Authority
+    problem_summary: str = Field(default="", description="Natural-language summary of the actual complaint.")
+    specific_details: List[str] = Field(default_factory=list, description="Observed facts extracted from the complaint.")
+    impact: str = Field(default="", description="Why the issue matters to residents or commuters.")
+    recommended_actions: List[str] = Field(default_factory=list, description="Actions relevant to the specific issue.")
+    related_issues: List[str] = Field(default_factory=list, description="Secondary issues mentioned in the same complaint.")
     letter: str
     timeline: List[TimelineStep]
     needs_followup: bool = False
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        kwargs.setdefault("exclude_none", True)
+        return super().model_dump(*args, **kwargs)
 
 
 class ComplaintRequest(BaseModel):
@@ -77,6 +90,10 @@ class ComplaintRequest(BaseModel):
         default="en",
         description="Complaint language: 'en' | 'hi' | 'mr'.",
     )
+    location: Optional[str] = Field(default=None, description="Optional explicit location provided by the user.")
+    location_source: Optional[LocationSource] = Field(default=None, description="Source for the location metadata.")
+    latitude: Optional[float] = Field(default=None, description="Optional latitude from browser geolocation.")
+    longitude: Optional[float] = Field(default=None, description="Optional longitude from browser geolocation.")
 
     @field_validator("text")
     @classmethod

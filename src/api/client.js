@@ -15,7 +15,7 @@
 
 import { pickMockByText } from '../mock/mockResponse.js';
 
-const rawApiUrl = import.meta.env.VITE_API_URL;
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 let API_URL = rawApiUrl;
 if (typeof window !== 'undefined' && rawApiUrl) {
   if (window.location.hostname === '127.0.0.1' && rawApiUrl.includes('localhost')) {
@@ -28,25 +28,38 @@ const REQUEST_TIMEOUT_MS = 20_000; // client-side guard (backend enforces 8s on 
 const DEMO_DELAY_MS = 900; // small "thinking" delay for mock responses
 
 function isContractResponse(data) {
-  return Boolean(
-    data &&
-      typeof data.category === 'string' &&
-      typeof data.location === 'string' &&
-      ['low', 'medium', 'high'].includes(data.urgency) &&
-      data.authority &&
-      ['name', 'department', 'phone', 'portal_url', 'portal_name'].every(
-        (key) => typeof data.authority[key] === 'string',
-      ) &&
-      typeof data.letter === 'string' &&
-      Array.isArray(data.timeline) &&
-      data.timeline.every(
-        (step) =>
-          typeof step.step === 'string' &&
-          Number.isInteger(step.day_offset) &&
-          typeof step.description === 'string',
-      ) &&
-      typeof data.needs_followup === 'boolean',
-  );
+  if (!data || typeof data.category !== 'string' || typeof data.location !== 'string') {
+    return false;
+  }
+  if (!['low', 'medium', 'high'].includes(data.urgency)) {
+    return false;
+  }
+  if (!data.authority || !['name', 'department', 'phone', 'portal_url', 'portal_name'].every(
+    (key) => typeof data.authority[key] === 'string',
+  )) {
+    return false;
+  }
+  if (typeof data.letter !== 'string' || typeof data.needs_followup !== 'boolean') {
+    return false;
+  }
+  if (!Array.isArray(data.timeline) || !data.timeline.every(
+    (step) =>
+      typeof step.step === 'string' &&
+      Number.isInteger(step.day_offset) &&
+      typeof step.description === 'string',
+  )) {
+    return false;
+  }
+  if (!Array.isArray(data.specific_details) || !Array.isArray(data.recommended_actions) || !Array.isArray(data.related_issues)) {
+    return false;
+  }
+  if (data.location_source && !['text', 'user_input', 'gps', 'combined', 'unknown'].includes(data.location_source)) {
+    return false;
+  }
+  if (data.location_confidence !== undefined && typeof data.location_confidence !== 'number') {
+    return false;
+  }
+  return true;
 }
 
 /** fetch() with an AbortController-based timeout. */

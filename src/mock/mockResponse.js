@@ -10,7 +10,7 @@
 
 const drainOverflowMock = {
   category: 'Sewerage',
-  location: 'Sector 4, Vashi, Navi Mumbai - 400703',
+  location: 'Location not specified',
   urgency: 'high',
   authority: {
     name: 'Navi Mumbai Municipal Corporation (NMMC)',
@@ -25,11 +25,11 @@ Navi Mumbai Municipal Corporation (NMMC),
 Palm Beach Road, CBD Belapur,
 Navi Mumbai - 400614
 
-Subject: Complaint regarding continuous drain overflow in Sector 4, Vashi
+Subject: Complaint regarding continuous drain overflow at the reported site
 
 Respected Sir/Madam,
 
-I am writing to formally report a serious drainage problem in Sector 4, Vashi, Navi Mumbai. The storm-water drain near the Sector 4 market road has been overflowing continuously, and untreated sewage water has spilled onto the road.
+I am writing to formally report a serious drainage problem in the affected area. The storm-water drain near the complaint site has been overflowing continuously, and untreated sewage water has spilled onto the road.
 
 This is a serious public-health and safety hazard, particularly for children and senior citizens. The stagnant water is a breeding ground for mosquitoes and increases the risk of water-borne diseases.
 
@@ -53,12 +53,12 @@ Yours faithfully,
     { step: 'Reminder / escalation to Ward Officer', day_offset: 7, description: 'If the drain is still overflowing, send a written reminder to the Ward Officer.' },
     { step: 'Target resolution', day_offset: 15, description: 'Target date for clearing the drain and disinfecting the stretch.' },
   ],
-  needs_followup: false,
+  needs_followup: true,
 };
 
 const streetlightMock = {
   category: 'Electrical',
-  location: 'Sector 12, Kharghar, Navi Mumbai',
+  location: 'Location not specified',
   urgency: 'medium',
   authority: {
     name: 'Navi Mumbai Municipal Corporation (NMMC)',
@@ -72,11 +72,11 @@ The Commissioner,
 Navi Mumbai Municipal Corporation (NMMC),
 Navi Mumbai.
 
-Subject: Complaint regarding non-functional street lights in Sector 12, Kharghar
+Subject: Complaint regarding non-functional street lights in the affected area
 
 Respected Sir/Madam,
 
-Several street lights in Sector 12, Kharghar have not been working for over a week, leaving the stretch dark and unsafe for pedestrians, especially women and senior citizens.
+Several street lights in the affected area have not been working for over a week, leaving the stretch dark and unsafe for pedestrians, especially women and senior citizens.
 
 I therefore request the Electrical Department to kindly:
 1. Inspect and repair the faulty street lights.
@@ -96,12 +96,56 @@ Yours faithfully,
     { step: 'Site inspection', day_offset: 3, description: 'Electrical staff inspect the faulty street lights.' },
     { step: 'Repair', day_offset: 7, description: 'Target date for repairing / replacing the lights.' },
   ],
-  needs_followup: false,
+  needs_followup: true,
+};
+
+const garbageMock = {
+  category: 'Solid Waste',
+  location: 'Location not specified',
+  urgency: 'medium',
+  authority: {
+    name: 'Navi Mumbai Municipal Corporation (NMMC)',
+    department: 'Solid Waste Management Department',
+    phone: '022-27571000',
+    portal_url: 'https://www.nmmc.gov.in',
+    portal_name: 'NMMC Online Grievance Redressal Portal',
+  },
+  letter: `To,
+The Commissioner,
+Navi Mumbai Municipal Corporation (NMMC),
+Navi Mumbai.
+
+Subject: Complaint regarding garbage accumulation at the reported site
+
+Respected Sir/Madam,
+
+A garbage pile has been left in a public area near the market, creating unhygienic conditions for residents, pedestrians and vendors.
+
+I therefore request the Solid Waste Department to kindly:
+1. Remove the accumulated garbage without delay.
+2. Sanitize the affected area and inspect the nearest dustbin / collection point.
+3. Prevent repeat dumping by increasing collection and enforcement.
+
+Thanking you,
+
+Yours faithfully,
+[Your Full Name]
+[Your Mobile Number]
+[Your Address / Sector]
+[Date]`,
+  timeline: [
+    { step: 'Complaint submitted', day_offset: 0, description: 'Your complaint is filed with the NMMC waste management desk / ward office.' },
+    { step: 'Acknowledgement + reference number', day_offset: 1, description: 'The department acknowledges the complaint and assigns a reference number.' },
+    { step: 'Site inspection', day_offset: 2, description: 'Ward staff inspect the area and confirm the waste pile.' },
+    { step: 'Collection / clean-up', day_offset: 3, description: 'A collection vehicle and cleaning crew remove the dumping site.' },
+    { step: 'Follow-up review', day_offset: 10, description: 'The ward reviews whether recurrence or enforcement is needed.' },
+  ],
+  needs_followup: true,
 };
 
 const illegalParkingMock = {
   category: 'Traffic',
-  location: 'Sector 17, Vashi, Navi Mumbai',
+  location: 'Location not specified',
   urgency: 'medium',
   authority: {
     name: 'Navi Mumbai Traffic Police',
@@ -115,11 +159,11 @@ The Deputy Commissioner of Police (Traffic),
 Navi Mumbai Traffic Police,
 Navi Mumbai.
 
-Subject: Complaint regarding illegal parking causing congestion near Sector 17, Vashi
+Subject: Complaint regarding illegal parking causing congestion at the reported site
 
 Respected Sir/Madam,
 
-I wish to report persistent illegal parking near Sector 17, Vashi, which is causing severe traffic congestion and blocking access for emergency vehicles.
+I wish to report persistent illegal parking in the affected area, which is causing severe traffic congestion and blocking access for emergency vehicles.
 
 I therefore request the Traffic Police to kindly:
 1. Deploy a towing van / patrol during peak hours.
@@ -139,13 +183,36 @@ Yours faithfully,
     { step: 'Spot visit by patrol', day_offset: 2, description: 'A traffic patrol visits the location during peak hours.' },
     { step: 'Enforcement drive', day_offset: 10, description: 'Target date for an enforcement / towing drive.' },
   ],
-  needs_followup: false,
+  needs_followup: true,
 };
+
+const LOCALITY_HINTS = [
+  'nerul', 'vashi', 'kharghar', 'sanpada', 'seawoods', 'airoli', 'belapur', 'ghansoli',
+  'koparkhairane', 'panvel', 'turbhe', 'ulwe', 'juinagar', 'cbd', 'navi mumbai',
+];
+
+function inferLocationFromText(text = '') {
+  const haystack = String(text).toLowerCase();
+  for (const place of LOCALITY_HINTS) {
+    if (haystack.includes(place)) {
+      return place
+        .split(' ')
+        .map((part) => (part === 'navi' ? 'Navi' : part.charAt(0).toUpperCase() + part.slice(1)))
+        .join(' ');
+    }
+  }
+  const sectorMatch = haystack.match(/\bsector\s*\d+[a-z]?\b/i);
+  if (sectorMatch) {
+    return sectorMatch[0].replace(/\s+/g, ' ');
+  }
+  return 'Location not specified';
+}
 
 // Ordered: first match wins.
 const MOCKS = [
   { keywords: ['drain', 'water', 'sewage', 'sewer', 'gutter', 'overflow', 'flood', 'manhole', 'नाला', 'गटार'], mock: drainOverflowMock },
   { keywords: ['light', 'streetlight', 'street light', 'lamp', 'bulb', 'dark', 'wire', 'बत्ती', 'वीज'], mock: streetlightMock },
+  { keywords: ['garbage', 'waste', 'trash', 'dump', 'dumping', 'dustbin', 'bin', 'kachra', 'कचरा', 'market pile'], mock: garbageMock },
 ];
 
 /**
@@ -156,8 +223,14 @@ const MOCKS = [
 export function pickMockByText(text = '') {
   const haystack = String(text).toLowerCase();
   const match = MOCKS.find(({ keywords }) => keywords.some((k) => haystack.includes(k)));
-  return match ? match.mock : illegalParkingMock;
+  const chosen = match ? { ...match.mock, authority: { ...match.mock.authority }, timeline: [...match.mock.timeline] } : { ...illegalParkingMock, authority: { ...illegalParkingMock.authority }, timeline: [...illegalParkingMock.timeline] };
+  const inferredLocation = inferLocationFromText(text);
+  if (inferredLocation !== 'Location not specified') {
+    chosen.location = inferredLocation;
+    chosen.needs_followup = false;
+  }
+  return chosen;
 }
 
-export const mockResponses = [drainOverflowMock, streetlightMock, illegalParkingMock];
+export const mockResponses = [drainOverflowMock, streetlightMock, garbageMock, illegalParkingMock];
 export default mockResponses;

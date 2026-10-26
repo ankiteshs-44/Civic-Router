@@ -76,14 +76,16 @@ Urgency:
 - "medium" for significant civic problems affecting many people.
 - "low" for minor or cosmetic issues.
 
-Location: extract the sector / locality if present (e.g. "Sector 4, Vashi, "
-"Navi Mumbai - 400703"). If the location is genuinely missing, set "location" "
+Location: extract the sector / locality if present (e.g. "Sector 4, Navi Mumbai"
+"or "Near Seawoods market"). If the location is genuinely missing, set "location" "
 "to "Location not specified" and "needs_followup" to true.
 
-Return ONLY a JSON object with exactly these keys:
+Return ONLY a JSON object with these keys:
 {{
   "category": string (one of the 8 above),
   "location": string,
+  "location_source": "text" | "user_input" | "gps" | "combined" | "unknown",
+  "location_confidence": number between 0 and 1,
   "urgency": "low" | "medium" | "high",
   "authority": {{
     "name": string,
@@ -92,6 +94,11 @@ Return ONLY a JSON object with exactly these keys:
     "portal_url": string,
     "portal_name": string
   }},
+  "problem_summary": string,
+  "specific_details": [string],
+  "impact": string,
+  "recommended_actions": [string],
+  "related_issues": [string],
   "letter": string (formal multi-line complaint letter, plain text, ending with \
 a salutation block and [Your Full Name] / [Your Mobile Number] / [Your Address] \
 / [Date] placeholders),
@@ -101,7 +108,9 @@ a salutation block and [Your Full Name] / [Your Mobile Number] / [Your Address] 
 
 The "letter" MUST be a complete formal letter beginning with "To," and the \
 authority address, including a "Subject:" line. The "timeline" MUST have 4-6 \
-ordered steps with increasing "day_offset" values starting at 0."""
+ordered steps with increasing "day_offset" values starting at 0. Do not invent a \
+precise address if the citizen did not provide one. If the location is unavailable, \
+keep "location": "Location not specified" and set "needs_followup": true."""
 
 
 class AIRouterUnavailable(RuntimeError):
@@ -110,11 +119,14 @@ class AIRouterUnavailable(RuntimeError):
 
 def _client() -> AsyncOpenAI:
     """Build a fresh AsyncOpenAI client, or raise if unconfigured."""
-    if not config.OPENAI_API_KEY:
-        raise AIRouterUnavailable("OPENAI_API_KEY is not configured.")
-    kwargs: Dict[str, Any] = {"api_key": config.OPENAI_API_KEY}
-    if config.OPENAI_BASE_URL:
-        kwargs["base_url"] = config.OPENAI_BASE_URL
+    api_key = config.GROQ_API_KEY or config.OPENAI_API_KEY
+    if not api_key:
+        raise AIRouterUnavailable("No API key configured for Groq or OpenAI.")
+
+    kwargs: Dict[str, Any] = {"api_key": api_key}
+    base_url = config.GROQ_BASE_URL if config.GROQ_API_KEY else config.OPENAI_BASE_URL
+    if base_url:
+        kwargs["base_url"] = base_url
     return AsyncOpenAI(**kwargs)
 
 
@@ -186,6 +198,8 @@ async def _call_model(text: str, image_base64: Optional[str]) -> str:
                         "properties": {
                             "category": {"type": "string", "enum": CATEGORIES},
                             "location": {"type": "string"},
+                            "location_source": {"type": "string", "enum": ["text", "user_input", "gps", "combined", "unknown"]},
+                            "location_confidence": {"type": "number"},
                             "urgency": {"type": "string", "enum": ["low", "medium", "high"]},
                             "authority": {
                                 "type": "object",
@@ -199,6 +213,11 @@ async def _call_model(text: str, image_base64: Optional[str]) -> str:
                                 },
                                 "required": ["name", "department", "phone", "portal_url", "portal_name"],
                             },
+                            "problem_summary": {"type": "string"},
+                            "specific_details": {"type": "array", "items": {"type": "string"}},
+                            "impact": {"type": "string"},
+                            "recommended_actions": {"type": "array", "items": {"type": "string"}},
+                            "related_issues": {"type": "array", "items": {"type": "string"}},
                             "letter": {"type": "string"},
                             "timeline": {
                                 "type": "array",
@@ -218,8 +237,15 @@ async def _call_model(text: str, image_base64: Optional[str]) -> str:
                         "required": [
                             "category",
                             "location",
+                            "location_source",
+                            "location_confidence",
                             "urgency",
                             "authority",
+                            "problem_summary",
+                            "specific_details",
+                            "impact",
+                            "recommended_actions",
+                            "related_issues",
                             "letter",
                             "timeline",
                             "needs_followup",
@@ -286,6 +312,25 @@ def _coerce_model(payload: Dict[str, Any]) -> ComplaintResponse:
         portal_name=str(authority_raw.get("portal_name", "")).strip() or "NMMC Online Grievance Redressal Portal",
     )
 
+    location_source = str(payload.get("location_source", "unknown") or "unknown").strip() or "unknown"
+    if location_source not in {"text", "user_input", "gps", "combined", "unknown"}:
+        location_source = "unknown"
+    try:
+        location_confidence = float(payload.get("location_confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        location_confidence = 0.0
+    location_confidence = max(0.0, min(1.0, location_confidence))
+
+    specific_details = payload.get("specific_details")
+    if not isinstance(specific_details, list):
+        specific_details = []
+    recommended_actions = payload.get("recommended_actions")
+    if not isinstance(recommended_actions, list):
+        recommended_actions = []
+    related_issues = payload.get("related_issues")
+    if not isinstance(related_issues, list):
+        related_issues = []
+
     return ComplaintResponse(
         category=(
             str(payload.get("category", "")).strip()
@@ -293,8 +338,15 @@ def _coerce_model(payload: Dict[str, Any]) -> ComplaintResponse:
             else "PWD"
         ),
         location=str(payload.get("location", "")).strip(),
+        location_source=location_source,  # type: ignore[arg-type]
+        location_confidence=location_confidence,
         urgency=urgency,  # type: ignore[arg-type]
         authority=authority,
+        problem_summary=str(payload.get("problem_summary", "") or "").strip(),
+        specific_details=[str(item).strip() for item in specific_details if str(item).strip()],
+        impact=str(payload.get("impact", "") or "").strip(),
+        recommended_actions=[str(item).strip() for item in recommended_actions if str(item).strip()],
+        related_issues=[str(item).strip() for item in related_issues if str(item).strip()],
         letter=str(payload.get("letter", "")).strip(),
         timeline=timeline,
         needs_followup=bool(payload.get("needs_followup", False)),
@@ -340,6 +392,10 @@ async def route(
     text: str,
     language: Optional[str] = "en",
     image_base64: Optional[str] = None,
+    location: Optional[str] = None,
+    location_source: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
 ) -> dict:
     """Route a complaint through the LLM and return a contract-valid dict.
 
@@ -349,6 +405,10 @@ async def route(
     try:
         raw = await _call_model(text, image_base64)
         payload = json.loads(raw)
+        if location and isinstance(payload, dict):
+            payload["location"] = location.strip() or "Location not specified"
+            payload["location_source"] = (location_source or "user_input").strip() or "user_input"
+            payload["location_confidence"] = 0.96 if payload["location_source"] in {"user_input", "gps", "combined"} else 0.8
         parsed = _coerce_model(payload)
         processed = _post_process(parsed, image_supplied=bool(image_base64))
         return processed.model_dump()
@@ -364,4 +424,4 @@ async def route(
 
 def is_configured() -> bool:
     """True when an API key is present (used for a friendly ``/health``)."""
-    return bool(config.OPENAI_API_KEY)
+    return bool(config.GROQ_API_KEY or config.OPENAI_API_KEY)

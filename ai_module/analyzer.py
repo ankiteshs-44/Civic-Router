@@ -2,8 +2,8 @@
 
 CURRENT STATE: STUB.
 
-``analyze_complaint`` returns a valid, hardcoded response (a drain overflow in
-Sector 4, Vashi handled by NMMC) for ANY input. The response is built through
+``analyze_complaint`` returns a valid, hardcoded response for ANY input. The
+response is built through
 the :class:`~ai_module.schema.ComplaintAnalysis` Pydantic model and returned via
 ``model_dump()``, so it is guaranteed to satisfy the JSON contract.
 
@@ -140,9 +140,9 @@ def analyze_complaint(
     STUB: the return value is hardcoded and ignores ``text``/``photo_bytes``/
     ``location_answer`` for now. Only ``lang_hint`` is reflected back.
     """
-    # Hardcoded demo values: drain overflow in Sector 4, Vashi -> NMMC.
-    # These mirror src/mock/mockResponse.js so the frontend renders identically.
-    location = "Sector 4, Vashi, Navi Mumbai - 400703"
+    # Hardcoded demo values intentionally avoid a fixed city or sector so the
+    # output cannot silently invent a location.
+    location = "Location not specified"
 
     analysis = ComplaintAnalysis(
         category="Drainage / Sewage Overflow",

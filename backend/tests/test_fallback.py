@@ -14,17 +14,28 @@ from schemas import ComplaintResponse  # noqa: E402
 
 def _assert_contract(result: dict) -> None:
     model = ComplaintResponse.model_validate(result)  # raises if invalid
-    assert set(model.model_dump()) == {
+    required = {
         "category",
         "location",
+        "location_source",
+        "location_confidence",
         "urgency",
         "authority",
+        "problem_summary",
+        "specific_details",
+        "impact",
+        "recommended_actions",
+        "related_issues",
         "letter",
         "timeline",
         "needs_followup",
     }
+    assert set(model.model_dump()) == required
     assert model.urgency in {"low", "medium", "high"}
     assert isinstance(model.timeline, list) and model.timeline
+    assert isinstance(model.problem_summary, str)
+    assert isinstance(model.specific_details, list)
+    assert isinstance(model.related_issues, list)
     assert "\n" in model.letter
 
 

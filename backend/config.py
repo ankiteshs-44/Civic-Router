@@ -18,6 +18,10 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 BASE_DIR = Path(__file__).resolve().parent
 
 # --- LLM --------------------------------------------------------------------
+# Groq is OpenAI-compatible, so support both providers without changing the app
+# code that calls the OpenAI SDK.
+GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip() or "https://api.groq.com/openai/v1"
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_BASE_URL: str | None = os.getenv("OPENAI_BASE_URL", "").strip() or None
 OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"

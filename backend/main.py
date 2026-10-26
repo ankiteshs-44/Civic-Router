@@ -77,19 +77,43 @@ async def complain(payload: ComplaintRequest, response: Response) -> dict:
     language = (payload.language or "en").strip() or "en"
 
     source = "ai"
+    location_value = payload.location.strip() if payload.location else None
+    location_source = payload.location_source or "unknown"
     try:
         result = await asyncio.wait_for(
-            ai_router.route(text, language=language, image_base64=payload.image_base64),
+            ai_router.route(
+                text,
+                language=language,
+                image_base64=payload.image_base64,
+                location=location_value,
+                location_source=location_source,
+                latitude=payload.latitude,
+                longitude=payload.longitude,
+            ),
             timeout=min(config.AI_TIMEOUT_SECONDS, 8.0),
         )
     except (ai_router.AIRouterUnavailable, asyncio.TimeoutError) as exc:
         logger.warning("AI routing unavailable (%s); using regex fallback.", exc)
         source = "fallback"
-        result = fallback.route(text, language=language)
+        result = fallback.route(
+            text,
+            language=language,
+            location=location_value,
+            location_source=location_source,
+            latitude=payload.latitude,
+            longitude=payload.longitude,
+        )
     except Exception as exc:  # noqa: BLE001 - never 500 on an unexpected AI error
         logger.error("Unexpected AI error (%s); using regex fallback.", exc)
         source = "fallback"
-        result = fallback.route(text, language=language)
+        result = fallback.route(
+            text,
+            language=language,
+            location=location_value,
+            location_source=location_source,
+            latitude=payload.latitude,
+            longitude=payload.longitude,
+        )
 
     if payload.image_base64 and source == "fallback":
         result["letter"] += (

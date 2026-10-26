@@ -26,6 +26,9 @@ export default function ComplaintForm({ onSubmit, busy, initialText = '' }) {
   const [text, setText] = useState(initialText);
   const [image, setImage] = useState(null);
   const [imageError, setImageError] = useState('');
+  const [location, setLocation] = useState('');
+  const [locationSource, setLocationSource] = useState('unknown');
+  const [gps, setGps] = useState({ lat: null, lon: null });
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -108,7 +111,31 @@ export default function ComplaintForm({ onSubmit, busy, initialText = '' }) {
   async function handleSubmit(event) {
     event.preventDefault();
     if (text.trim().length < 5) return;
-    await onSubmit({ text: text.trim(), image_base64: image?.url || null });
+    await onSubmit({
+      text: text.trim(),
+      image_base64: image?.url || null,
+      location: location.trim() || null,
+      location_source: location.trim() ? (gps.lat !== null && gps.lon !== null ? 'combined' : 'user_input') : (gps.lat !== null && gps.lon !== null ? 'gps' : 'unknown'),
+      latitude: gps.lat,
+      longitude: gps.lon,
+    });
+  }
+
+  function handleUseCurrentLocation() {
+    if (!navigator.geolocation) {
+      setVoiceError('Geolocation is not supported in this browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGps({ lat: position.coords.latitude, lon: position.coords.longitude });
+        setLocationSource('gps');
+      },
+      () => {
+        setVoiceError('Location access was denied. You can still submit the complaint with a written location.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
   }
 
   function handlePresetClick(presetKey) {
@@ -183,7 +210,7 @@ export default function ComplaintForm({ onSubmit, busy, initialText = '' }) {
           className="sr-only"
           aria-label={t('form.attachPhoto')}
         />
-        
+
         <button
           type="button"
           disabled={busy}
@@ -219,6 +246,15 @@ export default function ComplaintForm({ onSubmit, busy, initialText = '' }) {
           )}
         </button>
 
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleUseCurrentLocation}
+          className="inline-flex min-h-touch items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-ring dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <span>Use my current location</span>
+        </button>
+
         {text && (
           <button
             type="button"
@@ -229,6 +265,24 @@ export default function ComplaintForm({ onSubmit, busy, initialText = '' }) {
             Clear text
           </button>
         )}
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor="location-input" className="block text-sm font-bold text-slate-900 dark:text-white">
+          Location (optional)
+        </label>
+        <input
+          id="location-input"
+          type="text"
+          value={location}
+          onChange={(event) => setLocation(event.target.value)}
+          placeholder="Sector / locality / landmark / address"
+          disabled={busy}
+          className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-900/40"
+        />
+        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          Optional: add a sector, locality, landmark, or use your current location with permission.
+        </p>
       </div>
 
       {/* Image Preview Card */}

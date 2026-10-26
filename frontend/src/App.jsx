@@ -24,12 +24,12 @@ function AppContent() {
   const [formKey, setFormKey] = useState(0);
   const lastSubmissionRef = useRef(null);
 
-  async function handleRouting({ text, image_base64 }) {
-    lastSubmissionRef.current = { text, image_base64 };
+  async function handleRouting({ text, image_base64, location, location_source, latitude, longitude }) {
+    lastSubmissionRef.current = { text, image_base64, location, location_source, latitude, longitude };
     setError('');
     setBusy(true);
     try {
-      const response = await submitComplaint({ text, image_base64, language });
+      const response = await submitComplaint({ text, image_base64, language, location, location_source, latitude, longitude });
       setResult(response.data);
       setComplaintText(text);
       setDemo(response.demo);

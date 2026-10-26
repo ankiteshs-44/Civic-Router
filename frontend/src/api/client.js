@@ -28,25 +28,41 @@ const REQUEST_TIMEOUT_MS = 20_000; // client-side guard (backend enforces 8s on 
 const DEMO_DELAY_MS = 900; // small "thinking" delay for mock responses
 
 function isContractResponse(data) {
-  return Boolean(
-    data &&
-      typeof data.category === 'string' &&
-      typeof data.location === 'string' &&
-      ['low', 'medium', 'high'].includes(data.urgency) &&
-      data.authority &&
-      ['name', 'department', 'phone', 'portal_url', 'portal_name'].every(
-        (key) => typeof data.authority[key] === 'string',
-      ) &&
-      typeof data.letter === 'string' &&
-      Array.isArray(data.timeline) &&
-      data.timeline.every(
-        (step) =>
-          typeof step.step === 'string' &&
-          Number.isInteger(step.day_offset) &&
-          typeof step.description === 'string',
-      ) &&
-      typeof data.needs_followup === 'boolean',
-  );
+  if (!data || typeof data.category !== 'string' || typeof data.location !== 'string') {
+    return false;
+  }
+  if (!['low', 'medium', 'high'].includes(data.urgency)) {
+    return false;
+  }
+  if (!data.authority || !['name', 'department', 'phone', 'portal_url', 'portal_name'].every(
+    (key) => typeof data.authority[key] === 'string',
+  )) {
+    return false;
+  }
+  if (typeof data.letter !== 'string' || typeof data.needs_followup !== 'boolean') {
+    return false;
+  }
+  if (!Array.isArray(data.timeline) || !data.timeline.every(
+    (step) =>
+      typeof step.step === 'string' &&
+      Number.isInteger(step.day_offset) &&
+      typeof step.description === 'string',
+  )) {
+    return false;
+  }
+  if (!('problem_summary' in data) || typeof data.problem_summary !== 'string') {
+    return false;
+  }
+  if (!Array.isArray(data.specific_details) || !Array.isArray(data.recommended_actions) || !Array.isArray(data.related_issues)) {
+    return false;
+  }
+  if (data.location_source && !['text', 'user_input', 'gps', 'combined', 'unknown'].includes(data.location_source)) {
+    return false;
+  }
+  if (data.location_confidence !== undefined && typeof data.location_confidence !== 'number') {
+    return false;
+  }
+  return true;
 }
 
 /** fetch() with an AbortController-based timeout. */
@@ -67,10 +83,18 @@ function delay(ms) {
 
 /**
  * Route a citizen's complaint.
- * @param {{ text: string, image_base64?: string|null, language?: string }} params
+ * @param {{ text: string, image_base64?: string|null, language?: string, location?: string|null, location_source?: string|null, latitude?: number|null, longitude?: number|null }} params
  * @returns {Promise<{ data: object, demo: boolean, source: string }>}
  */
-export async function submitComplaint({ text, image_base64 = null, language = 'en' } = {}) {
+export async function submitComplaint({
+  text,
+  image_base64 = null,
+  language = 'en',
+  location = null,
+  location_source = null,
+  latitude = null,
+  longitude = null,
+} = {}) {
   const cleanText = String(text ?? '').trim();
   if (!cleanText) {
     throw new Error('Complaint text is required.');
@@ -87,6 +111,10 @@ export async function submitComplaint({ text, image_base64 = null, language = 'e
             text: cleanText,
             image_base64: image_base64 || null,
             language: language || 'en',
+            location: location || null,
+            location_source: location_source || null,
+            latitude: Number.isFinite(latitude) ? latitude : null,
+            longitude: Number.isFinite(longitude) ? longitude : null,
           }),
         },
         REQUEST_TIMEOUT_MS,
