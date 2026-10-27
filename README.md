@@ -7,6 +7,28 @@ when the model is unavailable. Complaints are recorded in SQLite.
 
 ## Setup
 
+## Desktop and Android packages
+
+The frontend can be packaged as a Windows installer (`.exe`), a Linux Debian
+package (`.deb`), and an Android debug APK (`.apk`). These native packages
+contain the frontend only. They use the existing local demo responses unless
+the frontend is built with `VITE_API_URL` set to a reachable backend URL. The
+backend and its secrets are not bundled.
+
+Install dependencies in both packages with `npm install` and
+`npm --prefix frontend install`, then build on a supported host:
+
+```bash
+npm run build:linux    # Linux x64 -> release/*.deb
+npm run build:windows  # Windows x64 -> release/*.exe
+npm run build:android  # Android -> android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+The Android build requires Android SDK tools and JDK 17. Build Windows
+installers on Windows. The GitHub Actions workflow builds the `.deb`, `.exe`,
+and `.apk` on their respective hosted runners and uploads them as workflow
+artifacts.
+
 ### Frontend
 
 From the repository root:

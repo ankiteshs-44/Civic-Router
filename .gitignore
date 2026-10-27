@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+release/
+android/.gradle/
+android/local.properties
+android/**/build/
 
 # Local environment variables (keep .env.example committed instead)
 .env
